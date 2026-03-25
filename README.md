@@ -15,3 +15,9 @@
 1. 安装依赖：`pip install torch torchvision matplotlib pillow`
 2. 训练模型：`python train.py`
 3. 运行检测：`python test.py`
+
+## 4. 算法改进：引入 Batch Normalization
+为了提升训练稳定性并加速收敛，本版本在编码器与解码器的卷积层后均引入了 **Batch Normalization (BN)** 层。
+
+- **收敛速度**：从实验结果看，Loss 在前 5 个 Epoch 显著下降。
+- **稳定性**：有效缓解了深层网络的梯度消失问题。
