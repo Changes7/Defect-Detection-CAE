@@ -1,61 +1,63 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
-from model import ConvAutoEncoder  # 导入你刚写的模型
+from model import ConvAutoEncoder
 import os
 
-# --- 1. 超参数设置 ---
-EPOCHS = 50           # 训练轮数（先跑50轮看看效果）
-BATCH_SIZE = 16       # 每批处理的照片数量
-LEARNING_RATE = 1e-3  # 学习率
+# --- 1. 参数设置 ---
+EPOCHS = 50
+BATCH_SIZE = 16
+LEARNING_RATE = 1e-3
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# --- 2. 数据预处理与加载 ---
-# 既然是 AI 训练，我们需要把图片统一大小并转化为 Tensor
-data_transform = transforms.Compose([
+# --- 2. 数据加载 ---
+transform = transforms.Compose([
     transforms.Resize((256, 256)),
     transforms.ToTensor(),
 ])
 
-# 加载训练集（只用 good 文件夹里的正常瓶子）
-train_dataset = datasets.ImageFolder(root='./data/metal_nut/train', transform=data_transform)
+# 假设你的数据在 data/bottle 目录下
+train_dataset = datasets.ImageFolder(root='data/bottle', transform=transform)
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-# --- 3. 初始化模型、损失函数和优化器 ---
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# --- 3. 模型初始化 ---
 model = ConvAutoEncoder().to(device)
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-# 使用均方误差损失（MSE），计算原图和还原图之间的差距
-criterion = nn.MSELoss() 
-# 使用 Adam 优化器，自动调整学习步伐
-optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-
-# --- 4. 开始训练循环 ---
-print(f"开始在 {device} 上训练...")
+# --- 4. 开始训练 ---
+loss_history = []
+print(f"正在 {device} 上开始训练...")
 
 for epoch in range(EPOCHS):
-    train_loss = 0.0
-    for data in train_loader:
-        img, _ = data  # 只要图片，不要标签（自编码器是无监督学习）
+    model.train()
+    train_loss = 0.0  # 【已修复】每一轮开始前清零
+    
+    for img, _ in train_loader:
         img = img.to(device)
-
-        # 前向传播：图片进，还原图出
+        
+        # 前向与反向传播
         output = model(img)
-        # 计算差距（原图 vs 还原图）
         loss = criterion(output, img)
-
-        # 反向传播：让 AI 纠错
+        
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
+        
         train_loss += loss.item() * img.size(0)
-    
-    # 每轮打印一次平均损失
+
+    # 计算平均 Loss
     avg_loss = train_loss / len(train_loader.dataset)
+    loss_history.append(avg_loss)
     print(f'Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.4f}')
 
-# --- 5. 保存训练好的“大脑” ---
+# --- 5. 保存结果 ---
 torch.save(model.state_dict(), 'bottle_ae.pth')
-print("训练完成！模型已保存为 bottle_ae.pth")
+
+# 将 Loss 记录存入文本文件，方便画图
+with open('loss_bn.txt', 'w') as f:
+    for l in loss_history:
+        f.write(f"{l}\n")
+
+print("训练完成！模型已保存，Loss 数据已存入 loss_bn.txt")
