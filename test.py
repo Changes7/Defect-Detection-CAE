@@ -12,9 +12,9 @@ import os
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans'] 
 
 # --- 1. 配置参数 ---
-MODEL_PATH = 'bottle_ae.pth'               # 训练好的模型路径
+MODEL_PATH = 'weights/bottle_ae.pth'         # 去 weights 文件夹找模型
+SAVE_RESULT = 'results/defect_detection_final.png' # 把结果存进 results 文件夹
 TEST_IMAGE = 'data/bottle/test/broken_small/001.png' # 选择一张缺陷图片进行测试 (请确保文件存在)
-SAVE_RESULT = 'defect_detection_final.png'   # 最终结果保存路径
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"正在 {device} 上运行测试...")

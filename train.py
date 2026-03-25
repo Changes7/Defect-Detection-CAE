@@ -53,10 +53,10 @@ for epoch in range(EPOCHS):
     print(f'Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.4f}')
 
 # --- 5. 保存结果 ---
-torch.save(model.state_dict(), 'bottle_ae.pth')
+torch.save(model.state_dict(), 'weights/bottle_ae.pth')
 
 # 将 Loss 记录存入文本文件，方便画图
-with open('loss_bn.txt', 'w') as f:
+with open('results/loss_bn.txt', 'w') as f:
     for l in loss_history:
         f.write(f"{l}\n")
 

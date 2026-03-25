@@ -5,7 +5,7 @@ def plot_loss():
     plt.rcParams['font.sans-serif'] = ['DejaVu Sans'] 
     
     try:
-        with open('loss_bn.txt', 'r') as f:
+        with open('results/loss_bn.txt', 'r') as f:
             losses = [float(line.strip()) for line in f]
     except FileNotFoundError:
         print("错误：找不到 loss_bn.txt，请先运行 train.py")
@@ -22,7 +22,7 @@ def plot_loss():
     plt.legend()
     
     # 保存高清图
-    plt.savefig('loss_curve_result.png', dpi=300, bbox_inches='tight')
+    plt.savefig('results/loss_curve_result.png', dpi=300)
     print("论文插图已生成：loss_curve_result.png")
 
 if __name__ == "__main__":
