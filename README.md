@@ -31,4 +31,10 @@
 2. **启动本地 Web Demo**：
    ```bash
    streamlit run app.py
+
+   ## 🌐 在线演示 (Live Demo)
+本项目已成功部署至 Streamlit Cloud，您可以直接访问以下链接进行实时在线检测：
+🔗 **[点击进入：[工业缺陷检测系统 Demo](https://defect-detection-cae-rsnejl3sldujasnxlnhstr.streamlit.app/)]**
+
+*注：首次访问可能需要几秒钟加载模型，请耐心等待。*
    
