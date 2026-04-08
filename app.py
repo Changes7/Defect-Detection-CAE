@@ -18,11 +18,12 @@ st.set_page_config(
 )
 
 # 隐藏 Streamlit 默认水印，提升专业度
+# 隐藏 Streamlit 默认水印，提升专业度
 hide_st_style = """
             <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
+            #MainMenu {visibility: hidden;} /* 只隐藏右上角的汉堡菜单 */
+            footer {visibility: hidden;}    /* 只隐藏底部的 Made with Streamlit 水印 */
+            /* 已经删除了 header 的隐藏，把侧边栏开关还给你 */
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -173,3 +174,4 @@ else:
             st.image('results/loss_curve_result.png', caption="CAE 模型训练误差收敛曲线", use_container_width=True)
     else:
         st.warning("暂无模型训练数据图表 (results/loss_curve_result.png)")
+
