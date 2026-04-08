@@ -5,6 +5,10 @@ from torchvision import transforms, datasets
 from model import ConvAutoEncoder
 import os
 
+# 【新增】安全检查：自动创建文件夹，防止运行到最后一步因为没文件夹而报错闪退
+for path in ['weights', 'results', 'data']:
+    os.makedirs(path, exist_ok=True)
+
 # --- 1. 参数设置 ---
 EPOCHS = 50
 BATCH_SIZE = 16
@@ -17,8 +21,10 @@ transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-# 假设你的数据在 data/bottle 目录下
-train_dataset = datasets.ImageFolder(root='data/bottle', transform=transform)
+# 【修改 1】：数据路径指向金属螺母 (Metal Nut)
+# ⚠️ 注意：ImageFolder 要求子目录结构，确保你的正常图片存放在类似 data/metal_nut/train/good/ 下
+DATA_ROOT = 'data/metal_nut/train' # 根据你实际解压的路径调整，比如 'factory_data/metal_nut/train'
+train_dataset = datasets.ImageFolder(root=DATA_ROOT, transform=transform)
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
 # --- 3. 模型初始化 ---
@@ -28,11 +34,11 @@ optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 # --- 4. 开始训练 ---
 loss_history = []
-print(f"正在 {device} 上开始训练...")
+print(f"正在 {device} 上开始训练金属螺母模型...")
 
 for epoch in range(EPOCHS):
     model.train()
-    train_loss = 0.0  # 【已修复】每一轮开始前清零
+    train_loss = 0.0  # 每一轮开始前清零
     
     for img, _ in train_loader:
         img = img.to(device)
@@ -53,11 +59,12 @@ for epoch in range(EPOCHS):
     print(f'Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.4f}')
 
 # --- 5. 保存结果 ---
-torch.save(model.state_dict(), 'weights/bottle_ae.pth')
+# 【修改 2】：保存的权重名字改为 metal_nut_ae.pth
+torch.save(model.state_dict(), 'weights/metal_nut_ae.pth')
 
-# 将 Loss 记录存入文本文件，方便画图
-with open('results/loss_bn.txt', 'w') as f:
+# 【修改 3】：Loss 记录文件改名，避免覆盖之前瓶子 (bottle) 的训练数据
+with open('results/loss_metal_nut.txt', 'w') as f:
     for l in loss_history:
         f.write(f"{l}\n")
 
-print("训练完成！模型已保存，Loss 数据已存入 loss_bn.txt")
+print("训练完成！螺母模型已保存至 weights/metal_nut_ae.pth，Loss 数据已存入 loss_metal_nut.txt")

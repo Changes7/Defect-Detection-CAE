@@ -8,7 +8,7 @@ import os
 from model import ConvAutoEncoder # 引入你的模型定义
 
 # ==========================================
-# 1. 全局配置与 UI 美化 (必须放在最前)
+# 0. 全局页面配置 (必须放在最前面)
 # ==========================================
 st.set_page_config(
     page_title="工业缺陷检测系统", 
@@ -17,20 +17,77 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 隐藏 Streamlit 默认水印，提升专业度
-# 隐藏 Streamlit 默认水印，提升专业度
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;} /* 只隐藏右上角的汉堡菜单 */
-            footer {visibility: hidden;}    /* 只隐藏底部的 Made with Streamlit 水印 */
-            /* 已经删除了 header 的隐藏，把侧边栏开关还给你 */
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+# ==========================================
+# 1. 动态日夜主题引擎 (UI 美化与状态管理)
+# ==========================================
+# 在侧边栏顶部添加一个精美的开关
+theme_toggle = st.sidebar.toggle("🌞 / 🌙 切换深夜工业模式", value=True)
+
+# 根据开关状态，动态分配色彩变量
+if theme_toggle:
+    # 🌙 深夜工业模式 (Dark Mode)
+    bg_color = "#0F172A"
+    sidebar_bg = "#1E293B"
+    text_color = "#F8FAFC"
+    card_bg = "#1E293B"
+    border_color = "#334155"
+else:
+    # 🌞 白天明亮模式 (Light Mode)
+    bg_color = "#F8FAFC"
+    sidebar_bg = "#F1F5F9"
+    text_color = "#0F172A"
+    card_bg = "#FFFFFF"
+    border_color = "#E2E8F0"
+
+# 动态组装 CSS 样式表
+dynamic_css = f"""
+<style>
+/* 隐藏默认水印 */
+#MainMenu {{visibility: hidden;}}
+footer {{visibility: hidden;}}
+header {{visibility: hidden;}}
+
+/* 强制覆盖主页面和侧边栏背景 */
+[data-testid="stAppViewContainer"] {{
+    background-color: {bg_color} !important;
+}}
+[data-testid="stSidebar"] {{
+    background-color: {sidebar_bg} !important;
+}}
+
+/* 覆盖各级标题和正文颜色 */
+h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {{
+    color: {text_color} !important;
+}}
+
+/* 仪表盘卡片高级定制 (带悬浮浮动效果) */
+[data-testid="stMetric"] {{
+    background-color: {card_bg} !important;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid {border_color};
+    transition: all 0.3s ease;
+}}
+[data-testid="stMetric"]:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}}
+
+/* 图片圆角处理 */
+img {{
+    border-radius: 8px;
+}}
+</style>
+"""
+# 注入动态 CSS
+st.markdown(dynamic_css, unsafe_allow_html=True)
+
 
 # ==========================================
 # 2. 侧边栏：操作面板与参数设置
 # ==========================================
+st.sidebar.markdown("---")
 st.sidebar.header("⚙️ 系统设置")
 product_type = st.sidebar.selectbox(
     "🔍 选择检测对象模型",
@@ -59,7 +116,6 @@ st.sidebar.markdown("""
 # ==========================================
 @st.cache_resource 
 def load_defect_model(path): 
-    # 传入 path 参数，这样切换下拉菜单时，Streamlit 会自动加载新模型
     model = ConvAutoEncoder()
     if not os.path.exists(path):
         return None
@@ -85,14 +141,17 @@ st.markdown("---")
 if model is None:
     st.error(f"❌ 严重错误：找不到模型文件 `{MODEL_PATH}`。请确保模型已训练并放在正确的目录下。")
 elif uploaded_file is not None:
-    # --- 阶段 A：图像预处理 ---
+    
+    # 读取原始图片
     input_pil = Image.open(uploaded_file).convert('RGB')
     origin_size_np = np.array(input_pil) 
 
-    with st.spinner('⚡ AI 正在进行张量运算与残差分析...'):
+    # === 高级状态栏：沉浸式检测过程 ===
+    with st.status("🔬 初始化 AI 视觉引擎...", expanded=True) as status:
+        st.write("📥 正在预处理图像张量...")
         input_tensor = preprocess(input_pil).unsqueeze(0).to(DEVICE)
         
-        # --- 阶段 B：模型推理 ---
+        st.write("🧠 自编码器特征重构中...")
         with torch.no_grad():
             recon_tensor = model(input_tensor)
 
@@ -100,16 +159,19 @@ elif uploaded_file is not None:
         img_np = input_tensor.squeeze().permute(1, 2, 0).cpu().numpy()
         recon_np = recon_tensor.squeeze().permute(1, 2, 0).cpu().numpy()
 
-        # 计算 MSE 残差热力图
+        st.write("🎯 提取残差并执行阈值分割...")
+        # 计算 MSE 残差图
         error_map_tensor = torch.mean(torch.pow(input_tensor - recon_tensor, 2), dim=1).squeeze().cpu()
         error_map_np = error_map_tensor.numpy()
         heatmap_norm = (error_map_np * 255).astype(np.uint8)
 
-        # --- 阶段 C：提取量化数据 (新增：用于仪表盘展示) ---
+        # 提取量化数据
         global_mse = float(np.mean(error_map_np))
         max_error_pixel = float(np.max(error_map_np))
 
-        # --- 阶段 D：自动化缺陷画框 ---
+        st.write("📐 生成热力图与自动定位画框...")
+        
+        # 自动化缺陷画框
         threshold_value = np.percentile(error_map_np, 99.5) * 255
         _, mask = cv2.threshold(heatmap_norm, threshold_value, 255, cv2.THRESH_BINARY)
         
@@ -124,15 +186,23 @@ elif uploaded_file is not None:
         for cnt in contours:
             if cv2.contourArea(cnt) > 20: 
                 x, y, w, h = cv2.boundingRect(cnt)
-                cv2.rectangle(img_for_bbox_bgr, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                # 绘制高亮纯红框，加粗至 3
+                cv2.rectangle(img_for_bbox_bgr, (x, y), (x+w, y+h), (0, 0, 255), 3)
                 defect_count += 1
         
         img_with_boxes_rgb = cv2.cvtColor(img_for_bbox_bgr, cv2.COLOR_BGR2RGB)
+        
+        # 将灰度的残差图渲染成 Jet 伪彩色热力图
+        heatmap_color = cv2.applyColorMap(heatmap_norm, cv2.COLORMAP_JET)
+        heatmap_color_rgb = cv2.cvtColor(heatmap_color, cv2.COLOR_BGR2RGB)
+        
+        # 进度条收尾
+        status.update(label="✅ 检测完成！", state="complete", expanded=False)
 
     # --- 阶段 E：网页可视化展示 ---
     st.markdown("### 📊 量化检测报告")
     
-    # 1. 工业级数据仪表盘
+    # 工业级数据仪表盘
     m1, m2, m3 = st.columns(3)
     m1.metric(label="全局平均重构误差 (MSE)", value=f"{global_mse:.5f}")
     m2.metric(label="局部异常峰值", value=f"{max_error_pixel:.3f}")
@@ -143,21 +213,23 @@ elif uploaded_file is not None:
     else:
         m3.metric(label="系统综合判定", value="✅ 正常 (合格)")
         st.success("质量放行：未检测到明显表面瑕疵。")
+        st.toast('检测放行：产品表面完好', icon='✅') # 右下角轻提示
         
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. 图像对比矩阵
+    # 图像对比矩阵 (使用 width="stretch" 防止终端报警)
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("**1. 原始样本 (Input)**")
-        st.image(img_for_bbox, use_container_width=True) # 使用最新的 use_container_width
+        st.image(img_for_bbox, width="stretch")
+        
     with col2:
-        st.markdown("**2. AI 重构 (Reconstruction)**")
-        recon_show = recon_np.clip(0, 1)
-        st.image(recon_show, use_container_width=True)
+        st.markdown("**2. 残差热力分析 (Heatmap)**")
+        st.image(heatmap_color_rgb, width="stretch")
+        
     with col3:
         st.markdown("**3. 定位结果 (Defect Box)**")
-        st.image(img_with_boxes_rgb, use_container_width=True)
+        st.image(img_with_boxes_rgb, width="stretch")
 
 else:
     # ==========================================
@@ -168,10 +240,8 @@ else:
     st.markdown("### 📈 算法模型收敛状态 (Training Loss)")
     
     if os.path.exists('results/loss_curve_result.png'):
-        # 居中显示收敛图
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            st.image('results/loss_curve_result.png', caption="CAE 模型训练误差收敛曲线", use_container_width=True)
+            st.image('results/loss_curve_result.png', caption="CAE 模型训练误差收敛曲线", width="stretch")
     else:
         st.warning("暂无模型训练数据图表 (results/loss_curve_result.png)")
-
