@@ -39,13 +39,12 @@ else:
     card_bg = "#FFFFFF"
     border_color = "#E2E8F0"
 
-# 动态组装 CSS 样式表
+# 动态组装 CSS 样式表 (【已修复】保留 header，防止侧边栏无法打开)
 dynamic_css = f"""
 <style>
-/* 隐藏默认水印 */
+/* 隐藏默认水印，但保留 header 以便打开侧边栏 */
 #MainMenu {{visibility: hidden;}}
 footer {{visibility: hidden;}}
-header {{visibility: hidden;}}
 
 /* 强制覆盖主页面和侧边栏背景 */
 [data-testid="stAppViewContainer"] {{
