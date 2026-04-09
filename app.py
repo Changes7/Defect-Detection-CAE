@@ -157,6 +157,9 @@ elif uploaded_file is not None:
         # 获取 Numpy 格式用于 OpenCV 处理
         img_np = input_tensor.squeeze().permute(1, 2, 0).cpu().numpy()
         recon_np = recon_tensor.squeeze().permute(1, 2, 0).cpu().numpy()
+        
+        # --- 新增：将重构的 Tensor 转换为可显示的 RGB 图像 ---
+        recon_img_rgb = np.clip(recon_np * 255, 0, 255).astype(np.uint8)
 
         st.write("🎯 提取残差并执行阈值分割...")
         # 计算 MSE 残差图
@@ -168,7 +171,7 @@ elif uploaded_file is not None:
         global_mse = float(np.mean(error_map_np))
         max_error_pixel = float(np.max(error_map_np))
 
-        st.write("📐 生成热力图与自动定位画框...")
+        st.write("📐 生成自动定位画框...")
         
         # 自动化缺陷画框
         threshold_value = np.percentile(error_map_np, 99.5) * 255
@@ -190,10 +193,6 @@ elif uploaded_file is not None:
                 defect_count += 1
         
         img_with_boxes_rgb = cv2.cvtColor(img_for_bbox_bgr, cv2.COLOR_BGR2RGB)
-        
-        # 将灰度的残差图渲染成 Jet 伪彩色热力图
-        heatmap_color = cv2.applyColorMap(heatmap_norm, cv2.COLORMAP_JET)
-        heatmap_color_rgb = cv2.cvtColor(heatmap_color, cv2.COLOR_BGR2RGB)
         
         # 进度条收尾
         status.update(label="✅ 检测完成！", state="complete", expanded=False)
@@ -223,8 +222,9 @@ elif uploaded_file is not None:
         st.image(img_for_bbox, width="stretch")
         
     with col2:
-        st.markdown("**2. 残差热力分析 (Heatmap)**")
-        st.image(heatmap_color_rgb, width="stretch")
+        # --- 修改：替换为正常的 AI 重构图 ---
+        st.markdown("**2. AI 重构图像 (Reconstruction)**")
+        st.image(recon_img_rgb, width="stretch")
         
     with col3:
         st.markdown("**3. 定位结果 (Defect Box)**")
