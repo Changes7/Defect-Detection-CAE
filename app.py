@@ -90,11 +90,18 @@ st.sidebar.markdown("---")
 st.sidebar.header("⚙️ 系统设置")
 product_type = st.sidebar.selectbox(
     "🔍 选择检测对象模型",
-    ("药用瓶口 (Bottle)", "金属螺母 (Metal Nut)")
+    ("药用瓶口 (Bottle)", "金属螺母 (Metal Nut)", "网格 (Grid)") # <--- 新增了网格选项
 )
 
-# 动态绑定权重路径
-MODEL_PATH = 'weights/bottle_ae.pth' if product_type == "药用瓶口 (Bottle)" else 'weights/metal_nut_ae.pth'
+# 动态绑定权重路径 (根据下拉菜单的选择，加载对应的模型)
+if product_type == "药用瓶口 (Bottle)":
+    MODEL_PATH = 'weights/bottle_ae.pth'
+elif product_type == "金属螺母 (Metal Nut)":
+    MODEL_PATH = 'weights/metal_nut_ae.pth'
+else:
+    MODEL_PATH = 'weights/grid_ae.pth' # <--- 新增网格模型的路径
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 st.sidebar.markdown("---")
