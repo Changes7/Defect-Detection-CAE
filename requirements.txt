@@ -6,4 +6,4 @@ streamlit
 # 图像处理（必须用 headless 版本，服务器没显示器驱动）
 opencv-python-headless
 Pillow
-numpy
+numpypytorch-msssim==1.0.0

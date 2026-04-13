@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
 from model import ConvAutoEncoder
 import os
+from pytorch_msssim import ssim
 
 # 【新增】安全检查：自动创建文件夹，防止运行到最后一步因为没文件夹而报错闪退
 for path in ['weights', 'results', 'data']:
@@ -13,6 +14,8 @@ for path in ['weights', 'results', 'data']:
 EPOCHS = 50
 BATCH_SIZE = 16
 LEARNING_RATE = 1e-3
+# 【新增 2】设置权重比例，MSE占大头负责整体亮度，SSIM占小头负责纹理细节
+ALPHA = 0.8
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # --- 2. 数据加载 ---
@@ -23,7 +26,7 @@ transform = transforms.Compose([
 
 # 【修改 1】：数据路径指向金属螺母 (Metal Nut)
 # ⚠️ 注意：ImageFolder 要求子目录结构，确保你的正常图片存放在类似 data/metal_nut/train/good/ 下
-DATA_ROOT = 'data/metal_nut/train' # 根据你实际解压的路径调整，比如 'factory_data/metal_nut/train'
+DATA_ROOT = 'data/grid/train' # 根据你实际解压的路径调整，比如 'factory_data/metal_nut/train'
 train_dataset = datasets.ImageFolder(root=DATA_ROOT, transform=transform)
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
@@ -60,11 +63,11 @@ for epoch in range(EPOCHS):
 
 # --- 5. 保存结果 ---
 # 【修改 2】：保存的权重名字改为 metal_nut_ae.pth
-torch.save(model.state_dict(), 'weights/metal_nut_ae.pth')
+torch.save(model.state_dict(), 'weights/grid_ae.pth')
 
 # 【修改 3】：Loss 记录文件改名，避免覆盖之前瓶子 (bottle) 的训练数据
-with open('results/loss_metal_nut.txt', 'w') as f:
+with open('results/loss_grid.txt', 'w') as f:
     for l in loss_history:
         f.write(f"{l}\n")
 
-print("训练完成！螺母模型已保存至 weights/metal_nut_ae.pth，Loss 数据已存入 loss_metal_nut.txt")
+print("训练完成！网格模型已保存至 weights/grid_ae.pth，Loss 数据已存入 loss_grid.txt")
