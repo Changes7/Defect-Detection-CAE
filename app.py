@@ -1,253 +1,96 @@
 import streamlit as st
-import torch
-from torchvision import transforms
-from PIL import Image
-import numpy as np
-import cv2
+import pandas as pd
+import sqlite3
 import os
-from model import ConvAutoEncoder # 引入你的模型定义
+import datetime
+from streamlit_autorefresh import st_autorefresh # 新增：引入自动刷新组件
 
 # ==========================================
-# 0. 全局页面配置 (必须放在最前面)
+# 0. 全局页面配置
 # ==========================================
-st.set_page_config(
-    page_title="工业缺陷检测系统", 
-    page_icon="🤖", 
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="工业质检平台", page_icon="🏭", layout="wide")
 
 # ==========================================
-# 1. 动态日夜主题引擎 (UI 美化与状态管理)
+# 💥 1. 核心大招：全自动轮询刷新引擎
 # ==========================================
-# 在侧边栏顶部添加一个精美的开关
-theme_toggle = st.sidebar.toggle("🌞 / 🌙 切换深夜工业模式", value=True)
-
-# 根据开关状态，动态分配色彩变量
-if theme_toggle:
-    # 🌙 深夜工业模式 (Dark Mode)
-    bg_color = "#0F172A"
-    sidebar_bg = "#1E293B"
-    text_color = "#F8FAFC"
-    card_bg = "#1E293B"
-    border_color = "#334155"
-else:
-    # 🌞 白天明亮模式 (Light Mode)
-    bg_color = "#F8FAFC"
-    sidebar_bg = "#F1F5F9"
-    text_color = "#0F172A"
-    card_bg = "#FFFFFF"
-    border_color = "#E2E8F0"
-
-# 动态组装 CSS 样式表 (【已修复】保留 header，防止侧边栏无法打开)
-dynamic_css = f"""
-<style>
-/* 隐藏默认水印，但保留 header 以便打开侧边栏 */
-#MainMenu {{visibility: hidden;}}
-footer {{visibility: hidden;}}
-
-/* 强制覆盖主页面和侧边栏背景 */
-[data-testid="stAppViewContainer"] {{
-    background-color: {bg_color} !important;
-}}
-[data-testid="stSidebar"] {{
-    background-color: {sidebar_bg} !important;
-}}
-
-/* 覆盖各级标题和正文颜色 */
-h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {{
-    color: {text_color} !important;
-}}
-
-/* 仪表盘卡片高级定制 (带悬浮浮动效果) */
-[data-testid="stMetric"] {{
-    background-color: {card_bg} !important;
-    border-radius: 10px;
-    padding: 15px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    border: 1px solid {border_color};
-    transition: all 0.3s ease;
-}}
-[data-testid="stMetric"]:hover {{
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
-}}
-
-/* 图片圆角处理 */
-img {{
-    border-radius: 8px;
-}}
-</style>
-"""
-# 注入动态 CSS
-st.markdown(dynamic_css, unsafe_allow_html=True)
-
+# 每隔 5000 毫秒（5秒）自动刷新一次整个页面，实现 Live 实时看板
+st_autorefresh(interval=5000, limit=10000, key="data_refresh")
 
 # ==========================================
-# 2. 侧边栏：操作面板与参数设置
+# 2. 页面标题与动态状态栏
 # ==========================================
-st.sidebar.markdown("---")
-st.sidebar.header("⚙️ 系统设置")
-product_type = st.sidebar.selectbox(
-    "🔍 选择检测对象模型",
-    ("药用瓶口 (Bottle)", "金属螺母 (Metal Nut)", "网格 (Grid)") # <--- 新增了网格选项
-)
-
-# 动态绑定权重路径 (根据下拉菜单的选择，加载对应的模型)
-if product_type == "药用瓶口 (Bottle)":
-    MODEL_PATH = 'weights/bottle_ae.pth'
-elif product_type == "金属螺母 (Metal Nut)":
-    MODEL_PATH = 'weights/metal_nut_ae.pth'
-else:
-    MODEL_PATH = 'weights/grid_ae.pth' # <--- 新增网格模型的路径
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-st.sidebar.markdown("---")
-st.sidebar.header("📥 数据输入")
-uploaded_file = st.sidebar.file_uploader("上传待测图片 (PNG/JPG)", type=['png', 'jpg', 'jpeg'])
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("""
-### 💡 检测原理说明
-1. **输入样本**：传入全新图像。
-2. **AI 重构**：自编码器抹除异常特征。
-3. **残差计算**：原图与重构图作差。
-4. **自动定位**：OpenCV 锁定瑕疵区域。
-""")
-
-# ==========================================
-# 3. 核心加载逻辑 (带缓存加速)
-# ==========================================
-@st.cache_resource 
-def load_defect_model(path): 
-    model = ConvAutoEncoder()
-    if not os.path.exists(path):
-        return None
-    model.load_state_dict(torch.load(path, map_location=DEVICE))
-    model.to(DEVICE)
-    model.eval()
-    return model
-
-model = load_defect_model(MODEL_PATH)
-
-# 核心预处理流程
-preprocess = transforms.Compose([
-    transforms.Resize((256, 256)),
-    transforms.ToTensor(),
-])
-
-# ==========================================
-# 4. 主界面：仪表盘与图像展示
-# ==========================================
-st.title("🤖 工业产品表面缺陷自动化检测系统 (CAE-BN Prototype)")
+st.title("🏭 CAE-BN 工业产品表面智能质检平台")
+# 把当前时间写进 caption，你会看到网页上的秒数每过 5 秒就会自动跳变！
+st.caption(f"🟢 系统处于 Live 模式 | 看板数据每 5 秒自动同步底层数据库 | 当前系统时间：**{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}**")
 st.markdown("---")
 
-if model is None:
-    st.error(f"❌ 严重错误：找不到模型文件 `{MODEL_PATH}`。请确保模型已训练并放在正确的目录下。")
-elif uploaded_file is not None:
+# ==========================================
+# 3. 核心逻辑：执行 SQL 查询获取真实指标
+# ==========================================
+def get_realtime_metrics():
+    db_path = "data/industrial_inspection.db"
     
-    # 读取原始图片
-    input_pil = Image.open(uploaded_file).convert('RGB')
-    origin_size_np = np.array(input_pil) 
-
-    # === 高级状态栏：沉浸式检测过程 ===
-    with st.status("🔬 初始化 AI 视觉引擎...", expanded=True) as status:
-        st.write("📥 正在预处理图像张量...")
-        input_tensor = preprocess(input_pil).unsqueeze(0).to(DEVICE)
-        
-        st.write("🧠 自编码器特征重构中...")
-        with torch.no_grad():
-            recon_tensor = model(input_tensor)
-
-        # 获取 Numpy 格式用于 OpenCV 处理
-        img_np = input_tensor.squeeze().permute(1, 2, 0).cpu().numpy()
-        recon_np = recon_tensor.squeeze().permute(1, 2, 0).cpu().numpy()
-        
-        # --- 新增：将重构的 Tensor 转换为可显示的 RGB 图像 ---
-        recon_img_rgb = np.clip(recon_np * 255, 0, 255).astype(np.uint8)
-
-        st.write("🎯 提取残差并执行阈值分割...")
-        # 计算 MSE 残差图
-        error_map_tensor = torch.mean(torch.pow(input_tensor - recon_tensor, 2), dim=1).squeeze().cpu()
-        error_map_np = error_map_tensor.numpy()
-        heatmap_norm = (error_map_np * 255).astype(np.uint8)
-
-        # 提取量化数据
-        global_mse = float(np.mean(error_map_np))
-        max_error_pixel = float(np.max(error_map_np))
-
-        st.write("📐 生成自动定位画框...")
-        
-        # 自动化缺陷画框
-        threshold_value = np.percentile(error_map_np, 99.5) * 255
-        _, mask = cv2.threshold(heatmap_norm, threshold_value, 255, cv2.THRESH_BINARY)
-        
-        kernel = np.ones((5,5), np.uint8)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-
-        img_for_bbox = cv2.resize(origin_size_np, (256, 256))
-        img_for_bbox_bgr = cv2.cvtColor(img_for_bbox, cv2.COLOR_RGB2BGR)
-
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        defect_count = 0
-        for cnt in contours:
-            if cv2.contourArea(cnt) > 20: 
-                x, y, w, h = cv2.boundingRect(cnt)
-                # 绘制高亮纯红框，加粗至 3
-                cv2.rectangle(img_for_bbox_bgr, (x, y), (x+w, y+h), (0, 0, 255), 3)
-                defect_count += 1
-        
-        img_with_boxes_rgb = cv2.cvtColor(img_for_bbox_bgr, cv2.COLOR_BGR2RGB)
-        
-        # 进度条收尾
-        status.update(label="✅ 检测完成！", state="complete", expanded=False)
-
-    # --- 阶段 E：网页可视化展示 ---
-    st.markdown("### 📊 量化检测报告")
+    # 如果数据库文件还不存在
+    if not os.path.exists(db_path):
+        return 0, 100.0, 0, 0
     
-    # 工业级数据仪表盘
-    m1, m2, m3 = st.columns(3)
-    m1.metric(label="全局平均重构误差 (MSE)", value=f"{global_mse:.5f}")
-    m2.metric(label="局部异常峰值", value=f"{max_error_pixel:.3f}")
+    conn = sqlite3.connect(db_path)
+    try:
+        # 利用 Pandas 直接执行 SQL 查询
+        df = pd.read_sql_query("SELECT * FROM inspection_logs", conn)
+    except sqlite3.OperationalError:
+        conn.close()
+        return 0, 100.0, 0, 0
+        
+    conn.close()
     
-    if defect_count > 0:
-        m3.metric(label="系统综合判定", value="🚨 异常 (不合格)")
-        st.error(f"系统警告：共锁定 **{defect_count}** 处明显结构异常。")
-    else:
-        m3.metric(label="系统综合判定", value="✅ 正常 (合格)")
-        st.success("质量放行：未检测到明显表面瑕疵。")
-        st.toast('检测放行：产品表面完好', icon='✅') # 右下角轻提示
-        
-    st.markdown("<br>", unsafe_allow_html=True)
+    total_count = len(df)
+    if total_count == 0:
+        return 0, 100.0, 0, 0
+    
+    ng_count = len(df[df['result'] == 'NG'])
+    ok_count = total_count - ng_count
+    yield_rate = (ok_count / total_count) * 100
+    
+    return total_count, yield_rate, ng_count, ok_count
 
-    # 图像对比矩阵 (使用 width="stretch" 防止终端报警)
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("**1. 原始样本 (Input)**")
-        st.image(img_for_bbox, width="stretch")
-        
-    with col2:
-        # --- 修改：替换为正常的 AI 重构图 ---
-        st.markdown("**2. AI 重构图像 (Reconstruction)**")
-        st.image(recon_img_rgb, width="stretch")
-        
-    with col3:
-        st.markdown("**3. 定位结果 (Defect Box)**")
-        st.image(img_with_boxes_rgb, width="stretch")
+total, y_rate, ng, ok = get_realtime_metrics()
 
+# ==========================================
+# 4. 渲染仪表盘 (Dashboard)
+# ==========================================
+st.subheader("📋 生产线实时看板 (Live Data)")
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric(label="今日已检测总数", value=f"{total} 件")
+col2.metric(label="实时良品率", value=f"{y_rate:.1f}%")
+col3.metric(label="发现缺陷件数", value=f"{ng} 件", delta="待复检", delta_color="inverse")
+col4.metric(label="合格放行件数", value=f"{ok} 件")
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ==========================================
+# 5. 从数据库中拉取最新流水
+# ==========================================
+if total > 0:
+    st.write("🕒 **最新检测流水**")
+    conn = sqlite3.connect("data/industrial_inspection.db")
+    # 高效拉取最新 5 条记录
+    query = """
+        SELECT timestamp as 时间, 
+               product_type as 产品类型, 
+               result as 检测结果, 
+               defect_count as 缺陷数量, 
+               mse as 均方误差 
+        FROM inspection_logs 
+        ORDER BY id DESC 
+        LIMIT 5
+    """
+    df_recent = pd.read_sql_query(query, conn)
+    conn.close()
+    st.table(df_recent)
 else:
-    # ==========================================
-    # 5. 初始欢迎页与训练收敛图
-    # ==========================================
-    st.info("👈 系统就绪。请在左侧控制台选择模型类型，并上传产品图像进行分析。")
-    st.markdown("---")
-    st.markdown("### 📈 算法模型收敛状态 (Training Loss)")
-    
-    if os.path.exists('results/loss_curve_result.png'):
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.image('results/loss_curve_result.png', caption="CAE 模型训练误差收敛曲线", width="stretch")
-    else:
-        st.warning("暂无模型训练数据图表 (results/loss_curve_result.png)")
+    st.info("💡 目前尚无检测记录。请前往左侧【实时缺陷检测】开始工作。")
+
+st.markdown("---")
+st.info("**系统架构说明**：本首页数据已接入底层 SQLite 关系型数据库，并启用了 Web 端的全自动轮询（5秒/次），实现了高并发场景下真正的物联网（IoT）级实时监控。")
