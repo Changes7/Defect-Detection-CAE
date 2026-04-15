@@ -6,68 +6,105 @@ from model import ConvAutoEncoder
 import os
 from pytorch_msssim import ssim
 
-# 【新增】安全检查：自动创建文件夹，防止运行到最后一步因为没文件夹而报错闪退
+# ==========================================
+# 1. 核心配置（训练不同产品只需改这里）
+# ==========================================
+PRODUCT = "screw"  # 螺丝
+DATA_ROOT = f'data/{PRODUCT}/train'
+SAVE_PATH = f'weights/{PRODUCT}_ae.pth'
+CHECKPOINT_PATH = f'weights/{PRODUCT}_checkpoint.pth' # 临时存档点
+LOSS_LOG_PATH = f'results/loss_{PRODUCT}.txt'
+
+EPOCHS = 200
+BATCH_SIZE = 16
+LEARNING_RATE = 1e-3
+ALPHA = 0.8  # 复合损失权重
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# ==========================================
+# 2. 安全检查与环境准备
+# ==========================================
 for path in ['weights', 'results', 'data']:
     os.makedirs(path, exist_ok=True)
 
-# --- 1. 参数设置 ---
-EPOCHS = 50
-BATCH_SIZE = 16
-LEARNING_RATE = 1e-3
-# 【新增 2】设置权重比例，MSE占大头负责整体亮度，SSIM占小头负责纹理细节
-ALPHA = 0.8
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# --- 2. 数据加载 ---
 transform = transforms.Compose([
     transforms.Resize((256, 256)),
     transforms.ToTensor(),
 ])
 
-# 【修改 1】：数据路径指向金属螺母 (Metal Nut)
-# ⚠️ 注意：ImageFolder 要求子目录结构，确保你的正常图片存放在类似 data/metal_nut/train/good/ 下
-DATA_ROOT = 'data/grid/train' # 根据你实际解压的路径调整，比如 'factory_data/metal_nut/train'
-train_dataset = datasets.ImageFolder(root=DATA_ROOT, transform=transform)
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+# 加载数据集
+try:
+    train_dataset = datasets.ImageFolder(root=DATA_ROOT, transform=transform)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+except FileNotFoundError:
+    print(f"❌ 错误：找不到路径 {DATA_ROOT}，请检查文件夹是否解压正确！")
+    exit()
 
-# --- 3. 模型初始化 ---
+# ==========================================
+# 3. 模型与断点接力
+# ==========================================
 model = ConvAutoEncoder().to(device)
-criterion = nn.MSELoss()
+mse_criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-# --- 4. 开始训练 ---
+start_epoch = 0
+# 【关键：接力逻辑】
+if os.path.exists(CHECKPOINT_PATH):
+    print(f"♻️ 发现【{PRODUCT}】的断点存档，正在恢复进度...")
+    model.load_state_dict(torch.load(CHECKPOINT_PATH))
+    print("✅ 进度恢复成功，将从上次中断的位置继续训练。")
+
+# ==========================================
+# 4. 开始训练（带防中断保护）
+# ==========================================
 loss_history = []
-print(f"正在 {device} 上开始训练金属螺母模型...")
+print(f"🚀 正在 {device} 上启动【{PRODUCT}】训练...")
 
-for epoch in range(EPOCHS):
-    model.train()
-    train_loss = 0.0  # 每一轮开始前清零
-    
-    for img, _ in train_loader:
-        img = img.to(device)
+try:
+    for epoch in range(start_epoch, EPOCHS):
+        model.train()
+        total_loss = 0.0
         
-        # 前向与反向传播
-        output = model(img)
-        loss = criterion(output, img)
+        for img, _ in train_loader:
+            img = img.to(device)
+            output = model(img)
+            
+            # 计算复合 Loss (MSE + SSIM)
+            loss_mse = mse_criterion(output, img)
+            loss_ssim = 1 - ssim(output, img, data_range=1.0, size_average=True)
+            loss = ALPHA * loss_mse + (1 - ALPHA) * loss_ssim
+            
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item() * img.size(0)
+
+        avg_loss = total_loss / len(train_loader.dataset)
+        loss_history.append(avg_loss)
         
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        
-        train_loss += loss.item() * img.size(0)
+        # 每 10 轮打印一次并存档
+        if (epoch + 1) % 10 == 0 or epoch == 0:
+            print(f'Epoch [{epoch+1}/{EPOCHS}], 综合 Loss: {avg_loss:.4f}')
+            torch.save(model.state_dict(), CHECKPOINT_PATH)
+            # 同时也更新一下 Loss 日志，防止中断丢失
+            with open(LOSS_LOG_PATH, 'a') as f:
+                f.write(f"{avg_loss}\n")
 
-    # 计算平均 Loss
-    avg_loss = train_loss / len(train_loader.dataset)
-    loss_history.append(avg_loss)
-    print(f'Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.4f}')
+except KeyboardInterrupt:
+    # 【关键：紧急避险】手动按 Ctrl+C 时触发
+    print("\n🛑 检测到中断！正在保存当前进度到存档点...")
+    torch.save(model.state_dict(), CHECKPOINT_PATH)
+    print(f"✅ 存档已保存至 {CHECKPOINT_PATH}。下次运行将自动接力！")
+    exit()
 
-# --- 5. 保存结果 ---
-# 【修改 2】：保存的权重名字改为 metal_nut_ae.pth
-torch.save(model.state_dict(), 'weights/grid_ae.pth')
+# ==========================================
+# 5. 训练圆满完成
+# ==========================================
+torch.save(model.state_dict(), SAVE_PATH)
+# 训练完成后，删除临时存档点
+if os.path.exists(CHECKPOINT_PATH):
+    os.remove(CHECKPOINT_PATH)
 
-# 【修改 3】：Loss 记录文件改名，避免覆盖之前瓶子 (bottle) 的训练数据
-with open('results/loss_grid.txt', 'w') as f:
-    for l in loss_history:
-        f.write(f"{l}\n")
-
-print("训练完成！网格模型已保存至 weights/grid_ae.pth，Loss 数据已存入 loss_grid.txt")
+print(f"🎊 【{PRODUCT}】训练圆满完成！")
+print(f"1. 权重：{SAVE_PATH}")
+print(f"2. 日志：{LOSS_LOG_PATH}")

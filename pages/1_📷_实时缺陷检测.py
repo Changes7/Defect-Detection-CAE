@@ -63,7 +63,7 @@ def run_ai_engine(img, model, device, prep, sens):
 
 st.sidebar.markdown("### 📷 检测配置")
 mode = st.sidebar.radio("工作模式", ["🔍 单图检测", "📷 拍照检测", "📊 多图批量评估"])
-prod = st.sidebar.selectbox("产品模型", ("Bottle", "Metal Nut", "Grid"))
+prod = st.sidebar.selectbox("产品模型", ("Bottle（药用瓶口）", "Metal Nut（螺母）", "Grid（网格）","Pill（胶囊）", "Screw（螺丝）"))
 sens = st.sidebar.slider("画框敏感度 (Percentile)", 90.0, 99.9, 99.5)
 st.sidebar.markdown("---")
 st.sidebar.info("[📁 GitHub 仓库](https://github.com/Changes7/Defect-Detection-CAE)")
@@ -72,6 +72,16 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 @st.cache_resource 
 def get_model(p):
+    model_map = {
+        "Bottle（药用瓶口）": "bottle",
+        "Metal Nut（螺母）": "metal_nut",
+        "Grid（网格）": "grid",
+        "Pill（胶囊）": "pill",
+        "Screw（螺丝）": "screw"
+    }
+    
+    # 获取对应的文件名
+    file_prefix = model_map.get(p, "bottle")
     path = f"weights/{p.lower().replace(' ', '_')}_ae.pth"
     if not os.path.exists(path): return None
     m = ConvAutoEncoder()
