@@ -3,6 +3,5 @@ data/
 __pycache__/
 .vscode/
 *.tar.xz
-*.pth
 *.tar.xz
 metal_nut/

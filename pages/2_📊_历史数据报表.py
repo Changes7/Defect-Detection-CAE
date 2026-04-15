@@ -1,101 +1,72 @@
 import streamlit as st
-import pandas as pd
 import sqlite3
+import pandas as pd
+import plotly.express as px
 import os
 
-# ==========================================
-# 0. 全局页面配置
-# ==========================================
-st.set_page_config(page_title="数据中心", page_icon="📊", layout="wide")
+st.set_page_config(page_title="数据报表中心", page_icon="📊", layout="wide")
 
-# ==========================================
-# 1. 侧边栏配置 (统一 GitHub 入口)
-# ==========================================
-st.sidebar.markdown("### 📊 报表控制台")
-st.sidebar.info("当前模块：**历史质检追溯系统**")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🔗 源码与资源")
-st.sidebar.markdown(
-    """
-    [📁 GitHub: Defect-Detection-CAE](https://github.com/Changes7/Defect-Detection-CAE)
-    
-    **版本**: v1.1.0 (Stable)
-    """
-)
-st.sidebar.markdown(
-    "[![GitHub stars](https://img.shields.io/github/stars/Changes7/Defect-Detection-CAE?style=social)](https://github.com/Changes7/Defect-Detection-CAE)"
-)
-
-st.title("📊 历史质检数据中心")
-
-db_path = "data/industrial_inspection.db"
-
-# ==========================================
-# 2. 高效数据加载 (带 5 秒 TTL 缓存)
-# ==========================================
-@st.cache_data(ttl=5)
-def load_historical_data(path):
-    if not os.path.exists(path):
+# --- 1. 数据库读取函数 ---
+def get_data():
+    db_path = "data/industrial_inspection.db"
+    if not os.path.exists(db_path):
         return pd.DataFrame()
     
-    conn = sqlite3.connect(path)
-    try:
-        # 一次性读取并转换时间戳
-        df = pd.read_sql_query("SELECT * FROM inspection_logs", conn)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-    except Exception:
-        df = pd.DataFrame()
-    finally:
-        conn.close()
+    conn = sqlite3.connect(db_path)
+    # 直接用 pandas 读取 SQL 结果，非常高效
+    df = pd.read_sql_query("SELECT * FROM inspection_logs", conn)
+    conn.close()
     return df
 
-# ==========================================
-# 3. 页面渲染逻辑
-# ==========================================
-df = load_historical_data(db_path)
+st.title("📊 生产线质检历史数据看板")
+
+df = get_data()
 
 if df.empty:
-    st.warning("⚠️ 暂无数据库记录。请前往【实时缺陷检测】模块生成测试数据。")
+    st.warning("目前数据库中尚无检测记录，请先去【实时检测】页面进行测试。")
 else:
-    # --- 第一部分：完整明细表 (用户要求放在第一) ---
-    st.subheader("📁 完整检测日志检索")
-    st.caption("💡 提示：点击表头可进行升/降序排列，鼠标悬停右上角可导出数据。")
-    
-    # 按照时间倒序显示，让最新的记录排在最前面
-    display_df = df.sort_values('timestamp', ascending=False)
-    st.dataframe(
-        display_df[['timestamp', 'product_type', 'result', 'defect_count', 'mse']], 
-        use_container_width=True,
-        height=350 
-    )
+    # --- 2. 顶部核心指标 (Metrics) ---
+    total_count = len(df)
+    ok_count = len(df[df['result'] == 'OK'])
+    ng_count = len(df[df['result'] == 'NG'])
+    ok_rate = (ok_count / total_count) * 100 if total_count > 0 else 0
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("累计检测总数", f"{total_count} 件")
+    m2.metric("实时良品率", f"{ok_rate:.1f}%")
+    m3.metric("发现缺陷件数", f"{ng_count} 件", delta_color="inverse")
+    m4.metric("合格放行件数", f"{ok_count} 件")
 
     st.markdown("---")
 
-    # --- 第二部分：可视化看板 ---
-    st.subheader("📈 数据可视化看板")
-    
-    tab1, tab2 = st.tabs(["📉 生产线残差趋势", "📊 质量分布统计"])
-    
-    with tab1:
-        st.markdown("**CAE 模型重构误差 (MSE) 时间序列**")
-        # 趋势图需要时间正序
-        trend_data = df.sort_values('timestamp').set_index('timestamp')['mse']
-        st.line_chart(trend_data)
-        st.caption("注：MSE 峰值代表模型识别到的结构性瑕疵程度。")
-        
-    with tab2:
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown("**合格率分布 (OK vs NG)**")
-            counts = df['result'].value_counts()
-            st.bar_chart(counts)
-            
-        with col_b:
-            st.markdown("**产品类型质检频次**")
-            p_counts = df['product_type'].value_counts()
-            st.bar_chart(p_counts)
+    # --- 3. 图表分析层 ---
+    col_left, col_right = st.columns(2)
 
-# 底部版权
-st.markdown("---")
-st.caption("工业产品表面缺陷检测系统 · 历史报表模块 · 2026")
+    with col_left:
+        st.subheader("✅ 合格比例分布")
+        # 饼图：展示 OK 和 NG 的占比
+        fig_pie = px.pie(df, names='result', color='result',
+                         color_discrete_map={'OK':'#2ecc71', 'NG':'#e74c3c'},
+                         hole=0.4)
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    with col_right:
+        st.subheader("📦 各类产品检测统计")
+        # 柱状图：展示不同 product_type 的检测分布
+        prod_counts = df.groupby(['product_type', 'result']).size().reset_index(name='counts')
+        fig_bar = px.bar(prod_counts, x='product_type', y='counts', color='result',
+                         barmode='group',
+                         color_discrete_map={'OK':'#2ecc71', 'NG':'#e74c3c'},
+                         labels={'counts':'检测数量', 'product_type':'产品类别'})
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    # --- 4. 原始数据穿透查看 ---
+    with st.expander("🔍 查看原始明细数据"):
+        # 允许用户按产品筛选
+        selected_prod = st.multiselect("筛选产品类别", df['product_type'].unique(), default=df['product_type'].unique())
+        filtered_df = df[df['product_type'].isin(selected_prod)]
+        st.dataframe(filtered_df.sort_values(by='id', ascending=False), use_container_width=True)
+        
+        # 提供 CSV 下载功能
+        csv = filtered_df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 导出报表为 CSV", data=csv, file_name="inspection_report.csv", mime="text/csv")

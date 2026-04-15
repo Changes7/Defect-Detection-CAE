@@ -82,7 +82,7 @@ def get_model(p):
     
     # 获取对应的文件名
     file_prefix = model_map.get(p, "bottle")
-    path = f"weights/{p.lower().replace(' ', '_')}_ae.pth"
+    path = f"weights/{file_prefix}_ae.pth"
     if not os.path.exists(path): return None
     m = ConvAutoEncoder()
     m.load_state_dict(torch.load(path, map_location=DEVICE))

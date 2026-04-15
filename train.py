@@ -9,7 +9,7 @@ from pytorch_msssim import ssim
 # ==========================================
 # 1. 核心配置（训练不同产品只需改这里）
 # ==========================================
-PRODUCT = "screw"  # 螺丝
+PRODUCT = "grid"  # 瓶底
 DATA_ROOT = f'data/{PRODUCT}/train'
 SAVE_PATH = f'weights/{PRODUCT}_ae.pth'
 CHECKPOINT_PATH = f'weights/{PRODUCT}_checkpoint.pth' # 临时存档点
