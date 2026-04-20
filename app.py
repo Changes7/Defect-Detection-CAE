@@ -34,9 +34,7 @@ st.sidebar.markdown(
     **架构**: PyTorch + SQLite
     """
 )
-st.sidebar.markdown(
-    "[![GitHub stars](https://img.shields.io/github/stars/Changes7/Defect-Detection-CAE?style=social)](https://github.com/Changes7/Defect-Detection-CAE)"
-)
+st.sidebar.markdown("[![GitHub stars](https://img.shields.io/github/stars/Changes7/Defect-Detection-CAE?style=social)](https://github.com/Changes7/Defect-Detection-CAE)")
 
 # ==========================================
 # 7. 侧边栏：检测报告下载功能
