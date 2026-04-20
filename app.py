@@ -3,7 +3,6 @@ import pandas as pd
 import sqlite3
 import os
 import datetime
-from streamlit_autorefresh import st_autorefresh
 
 # ==========================================
 # 0. 全局页面配置 (必须是第一个 Streamlit 命令)
@@ -13,7 +12,17 @@ st.set_page_config(page_title="工业质检平台", page_icon="🏭", layout="wi
 # ==========================================
 # 1. 全自动轮询刷新引擎 (5秒/次)
 # ==========================================
-st_autorefresh(interval=5000, limit=10000, key="data_refresh")
+# 尝试导入 streamlit_autorefresh，如果失败则使用备用方案
+try:
+    from streamlit_autorefresh import st_autorefresh
+    # 运行自动刷新
+    st_autorefresh(interval=5000, limit=10000, key="data_refresh")
+except ImportError:
+    # 如果模块未安装，使用 HTML meta 标签实现自动刷新
+    st.markdown("""
+        <meta http-equiv="refresh" content="5">
+    """, unsafe_allow_html=True)
+    st.sidebar.warning("streamlit-autorefresh 模块未安装，使用基础自动刷新。")
 
 # ==========================================
 # 2. 侧边栏：系统信息与源码入口
