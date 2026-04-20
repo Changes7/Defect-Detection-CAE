@@ -35,8 +35,66 @@ st.sidebar.markdown(
     """
 )
 st.sidebar.markdown(
-    "[![GitHub stars](https://img.shields.io/github/stars/Changes7/Defect-Detection-CAE?style=social)](https://github.com/Changes7/Defect-Detection-CAE)"
+    "[![GitHub stars](https://img.shields.io/github/stars/Changes7/Defect-Detection-CAE?style=social)](https://github.com/Changes7/Defect-Detection-CAE)
 )
+
+# ==========================================
+# 7. 侧边栏：检测报告下载功能
+# ==========================================
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📊 检测报告下载")
+
+# 生成检测报告的函数
+@st.cache_data(ttl=10)
+def generate_inspection_report():
+    db_path = "data/industrial_inspection.db"
+    if not os.path.exists(db_path):
+        return None
+    
+    conn = sqlite3.connect(db_path)
+    try:
+        # 获取所有检测记录，按时间降序排列
+        query = """
+            SELECT timestamp as 检测时间, 
+                   product_type as 模型名称, 
+                   result as 系统判定结果, 
+                   mse as MSE误差值
+            FROM inspection_logs 
+            ORDER BY timestamp DESC
+        """
+        df = pd.read_sql_query(query, conn)
+    except Exception as e:
+        st.sidebar.error(f"读取数据库时出错: {e}")
+        df = pd.DataFrame()
+    finally:
+        conn.close()
+    
+    return df
+
+# 获取报告数据
+report_df = generate_inspection_report()
+
+if not report_df.empty:
+    # 将DataFrame转换为CSV
+    csv_data = report_df.to_csv(index=False, encoding='utf-8-sig')
+    
+    # 生成当前时间戳作为文件名的一部分
+    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f"缺陷检测报告_{current_time}.csv"
+    
+    # 创建下载按钮
+    st.sidebar.download_button(
+        label="📥 一键下载完整检测报告 (CSV)",
+        data=csv_data,
+        file_name=file_name,
+        mime="text/csv",
+        help="下载包含所有检测记录的完整报告，包括检测时间、模型名称、MSE误差值和系统判定结果"
+    )
+    
+    # 显示报告摘要
+    st.sidebar.info(f"报告包含 **{len(report_df)}** 条检测记录，最新记录：{report_df.iloc[0]['检测时间']}")
+else:
+    st.sidebar.warning("暂无检测记录，无法生成报告。")
 
 # ==========================================
 # 3. 页面标题与动态状态栏
