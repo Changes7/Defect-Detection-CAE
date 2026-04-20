@@ -35,7 +35,7 @@ st.sidebar.markdown(
     """
 )
 st.sidebar.markdown(
-    "[![GitHub stars](https://img.shields.io/github/stars/Changes7/Defect-Detection-CAE?style=social)](https://github.com/Changes7/Defect-Detection-CAE)
+    "[![GitHub stars](https://img.shields.io/github/stars/Changes7/Defect-Detection-CAE?style=social)](https://github.com/Changes7/Defect-Detection-CAE)"
 )
 
 # ==========================================
@@ -74,7 +74,7 @@ def generate_inspection_report():
 # 获取报告数据
 report_df = generate_inspection_report()
 
-if not report_df.empty:
+if report_df is not None and not report_df.empty:
     # 将DataFrame转换为CSV
     csv_data = report_df.to_csv(index=False, encoding='utf-8-sig')
     
@@ -93,6 +93,8 @@ if not report_df.empty:
     
     # 显示报告摘要
     st.sidebar.info(f"报告包含 **{len(report_df)}** 条检测记录，最新记录：{report_df.iloc[0]['检测时间']}")
+elif report_df is None:
+    st.sidebar.warning("数据库不存在，无法生成报告。")
 else:
     st.sidebar.warning("暂无检测记录，无法生成报告。")
 
