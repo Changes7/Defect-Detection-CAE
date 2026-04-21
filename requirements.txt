@@ -4,3 +4,5 @@ torchvision
 opencv-python-headless
 pandas
 streamlit-autorefresh
+pandas
+pandas

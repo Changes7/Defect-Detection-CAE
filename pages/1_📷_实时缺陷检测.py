@@ -50,39 +50,20 @@ def run_ai_engine(img, model, device, prep, sens):
     res_color = (0,0,255) if defects > 0 else (0,255,0)
     cv2.putText(res_bgr, f"RESULT: {res_text}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, res_color, 2)
     
-    # 生成热力图
     heatmap = cv2.applyColorMap((err_map / (np.max(err_map)+1e-7) * 255).astype(np.uint8), cv2.COLORMAP_JET)
-    
-    # 生成红色残差热力图叠加到原图
-    # 将热力图转换为红色调
-    # 创建一个红色热力图：将JET热力图的红色通道增强，蓝色和绿色通道减弱
-    heatmap_red = heatmap.copy()
-    # 增强红色，减弱蓝色和绿色
-    heatmap_red[:,:,0] = 0  # 蓝色通道设为0
-    heatmap_red[:,:,1] = 0  # 绿色通道设为0
-    # 红色通道保持不变
-    
-    # 将红色热力图叠加到原图上
-    orig_resized = cv2.resize(np.array(img), (256, 256))
-    orig_bgr = cv2.cvtColor(orig_resized, cv2.COLOR_RGB2BGR)
-    # 调整热力图的透明度
-    alpha = 0.5
-    overlay = cv2.addWeighted(orig_bgr, 1 - alpha, heatmap_red, alpha, 0)
-    overlay_rgb = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
     
     return {
         "orig": cv2.resize(np.array(img), (256, 256)),
         "recon": recon_np,
         "heat": cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB),
         "res": cv2.cvtColor(res_bgr, cv2.COLOR_BGR2RGB),
-        "overlay": overlay_rgb,  # 添加叠加图像
         "mse": mse,
         "defects": defects
     }
 
 st.sidebar.markdown("### 📷 检测配置")
 mode = st.sidebar.radio("工作模式", ["🔍 单图检测", "📷 拍照检测", "📊 多图批量评估"])
-prod = st.sidebar.selectbox("产品模型", ("Bottle（药用瓶口）", "Metal Nut（螺母）", "Grid（网格）","Pill（胶囊）", "Screw（螺丝）"))
+prod = st.sidebar.selectbox("产品模型", ("Bottle", "Metal Nut", "Grid"))
 sens = st.sidebar.slider("画框敏感度 (Percentile)", 90.0, 99.9, 99.5)
 st.sidebar.markdown("---")
 st.sidebar.info("[📁 GitHub 仓库](https://github.com/Changes7/Defect-Detection-CAE)")
@@ -91,17 +72,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 @st.cache_resource 
 def get_model(p):
-    model_map = {
-        "Bottle（药用瓶口）": "bottle",
-        "Metal Nut（螺母）": "metal_nut",
-        "Grid（网格）": "grid",
-        "Pill（胶囊）": "pill",
-        "Screw（螺丝）": "screw"
-    }
-    
-    # 获取对应的文件名
-    file_prefix = model_map.get(p, "bottle")
-    path = f"weights/{file_prefix}_ae.pth"
+    path = f"weights/{p.lower().replace(' ', '_')}_ae.pth"
     if not os.path.exists(path): return None
     m = ConvAutoEncoder()
     m.load_state_dict(torch.load(path, map_location=DEVICE))
@@ -125,21 +96,19 @@ else:
             log_to_db(prod, res["defects"], res["mse"])
             
             if mode == "📊 多图批量评估":
-                # 批量评估：五列并排，每张都有 caption
-                c1, c2, c3, c4, c5 = st.columns(5)
+                # 批量评估：四列并排，每张都有 caption
+                c1, c2, c3, c4 = st.columns(4)
                 c1.image(res["orig"], caption="[原始样本]", use_container_width=True)
                 c2.image(res["recon"], caption="[AI 重构]", use_container_width=True)
                 c3.image(res["heat"], caption="[热力残差]", use_container_width=True)
                 c4.image(res["res"], caption="[判定结果]", use_container_width=True)
-                c5.image(res["overlay"], caption="[热力图叠加]", use_container_width=True)
                 st.markdown("<hr style='margin:15px 0; border:0.5px solid #eee'>", unsafe_allow_html=True)
             else:
-                # 单图/拍照：四列并排，每张都有 caption
-                col1, col2, col3, col4 = st.columns(4)
+                # 单图/拍照：三列并排，每张都有 caption
+                col1, col2, col3 = st.columns(3)
                 col1.image(res["orig"], caption="原始样本", use_container_width=True)
                 col2.image(res["recon"], caption="AI 重构", use_container_width=True)
                 col3.image(res["res"], caption="判定结果", use_container_width=True)
-                col4.image(res["overlay"], caption="热力图叠加", use_container_width=True)
                 with st.expander("🔬 查看热力分析"):
                     st.image(res["heat"], caption="残差热力分布图", width=400)
                 st.markdown("---")

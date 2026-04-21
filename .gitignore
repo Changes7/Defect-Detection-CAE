@@ -5,3 +5,4 @@ __pycache__/
 *.tar.xz
 *.tar.xz
 metal_nut/
+.aider*
