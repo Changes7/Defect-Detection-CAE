@@ -7,6 +7,8 @@
 ## 🌟 项目简介
 本项目是一款基于**卷积自编码器 (CAE)** 的无监督工业缺陷检测系统。采用**微服务架构**设计，将 AI 推理引擎与 Web 交互终端彻底解耦，适用于 AGV 智能仓储、流水线实时质检等工业 4.0 场景。
 
+点击查看：[我的在线演示地址](http://192.168.204.133:8501)
+
 # 演示与文档
 [![Demo](https://img.shields.io/badge/Live-Demo-blue?style=for-the-badge&logo=streamlit)](http://192.168.204.133:8501)
 [![API Docs](https://img.shields.io/badge/API-Docs-green?style=for-the-badge&logo=fastapi)](http://192.168.204.133:8000/docs)
