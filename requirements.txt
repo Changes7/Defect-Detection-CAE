@@ -1,8 +1,10 @@
 streamlit
+fastapi
+uvicorn
 torch
 torchvision
-opencv-python-headless
-pandas
-streamlit-autorefresh
-pandas
-pandas
+opencv-python
+numpy
+pillow
+requests
+python-multipart

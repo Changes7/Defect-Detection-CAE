@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  # 1. 视觉推理引擎后端
+  inference-engine:
+    build: 
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./weights:/app/weights # 挂载模型权重目录
+    restart: always
+
+  # 2. Web 质检大屏前端
+  web-ui:
+    build: 
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "8501:8501"
+    depends_on:
+      - inference-engine # 保证先启动后端引擎，再启动前台界面
+    restart: always

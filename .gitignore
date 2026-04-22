@@ -1,8 +1,25 @@
+# --- Python 环境与缓存 ---
 venv/
-data/
 __pycache__/
-.vscode/
-*.tar.xz
+*.py[cod]
+*$py.class
+
+# --- 数据库与日志 (保护隐私) ---
+*.db
+api_log.txt
+
+# --- 大文件与模型 (防止 GitHub 报错) ---
+weights/*.pth
+data/
 *.tar.xz
 metal_nut/
+
+# --- IDE 与工具配置 ---
+.vscode/
+.devcontainer/
 .aider*
+.streamlit/
+
+# --- 操作系统临时文件 ---
+.DS_Store
+Thumbs.db
