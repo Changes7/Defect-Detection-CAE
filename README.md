@@ -1,34 +1,36 @@
-# 🏭 CAE-BN: 工业产品表面缺陷智能质检平台
+# 🚀 基于卷积自编码器(CAE)的工业产品表面缺陷检测系统
+**Industrial Surface Defect Detection System based on CAE**
 
-![License](https://img.shields.io/badge/License-MIT-blue.svg)
-![Python](https://img.shields.io/badge/Python-3.10%2B-green)
-![Framework](https://img.shields.io/badge/Framework-FastAPI%20%7C%20Streamlit-orange)
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C.svg)](https://pytorch.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## 🌟 项目简介
-本项目是一款基于**卷积自编码器 (CAE)** 的无监督工业缺陷检测系统。采用**微服务架构**设计，将 AI 推理引擎与 Web 交互终端彻底解耦，适用于 AGV 智能仓储、流水线实时质检等工业 4.0 场景。
+---
 
-点击查看：[我的在线演示地址](http://192.168.204.133:8501)
+## 🌐 在线演示 (Cloud Demo)
+您可以直接访问部署在腾讯云的演示平台，实时体验 AI 质检过程：
+👉 **[点击进入：数字化质检看板](http://152.136.23.81:8501)**
+*(注：云端算力有限，推理耗时约 200ms-500ms)*
 
-# 演示与文档
-[![Demo](https://img.shields.io/badge/Live-Demo-blue?style=for-the-badge&logo=streamlit)](http://192.168.204.133:8501)
-[![API Docs](https://img.shields.io/badge/API-Docs-green?style=for-the-badge&logo=fastapi)](http://192.168.204.133:8000/docs)
+---
 
-## 🛠️ 技术架构
-- **核心算法**: 基于 PyTorch 的卷积自编码器 (Convolutional Autoencoder)
-- **后端引擎**: FastAPI (RESTful API, 支持高并发推理)
-- **前端界面**: Streamlit (响应式工业看板)
-- **安全保障**: 基于 RBAC 的权限控制系统 + SHA-256 密码加密
-- **部署方案**: 支持 Docker 容器化部署与一键 Shell 脚本运维
+## 📖 项目简介 (Project Overview)
+本项目是针对工业生产线中产品表面缺陷（如划痕、裂纹、异物等）设计的智能质检方案。采用 **卷积自编码器 (Convolutional Autoencoder)** 架构，通过无监督学习正常样本的特征空间，实现对异常区域的精准定位与判定。
+
+### 核心功能：
+- **实时推理**：秒级上传，实时反馈检测结果。
+- **热力图可视化**：直观展示图像重构误差分布。
+- **微服务架构**：FastAPI 提供高性能 AI 接口，Streamlit 提供交互式数据看板。
+- **高可用部署**：基于 PM2 进程守护，实现 24/7 在线服务。
+
+---
+
+## 🏗️ 系统架构 (Architecture)
 
 
-
-## 🚀 快速启动
-
-### 1. 环境安装
-```bash
-git clone [https://github.com/你的用户名/defect_detection.git](https://github.com/你的用户名/defect_detection.git)
-cd defect_detection
-python -m venv venv
-source venv/bin/activate  # Linux/Ubuntu
-pip install -r requirements.txt
-   
+```mermaid
+graph LR
+    A[工业摄像机/用户上传] --> B(Streamlit 前端大屏)
+    B -->|RESTful API| C(FastAPI 后端大脑)
+    C -->|CAE Inference| D[PyTorch 推理引擎]
+    D -->|检测结果/评分| B
