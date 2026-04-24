@@ -3,6 +3,9 @@ import pandas as pd
 import os
 from streamlit_autorefresh import st_autorefresh
 from core_utils import get_all_data
+from style_utils import apply_glass_theme
+apply_glass_theme()
+
 
 st.title("🏠 数字化生产监控看板")
 
@@ -40,10 +43,14 @@ with c1:
         st.info("尚未生成训练曲线图 (results/loss_curve_result.png)")
 with c2:
     st.subheader("🛡️ 系统核心参数")
-    st.json({
-        "模型架构": "ConvAutoEncoder-BN",
-        "损失函数": "MSE + SSIM (Composite)",
-        "输入分辨率": "256x256 RGB",
-        "数据库": "SQLite3 (Local Storage)",
-        "状态": "Running (Live)"
-    })
+    # 使用 container 包裹，增加统一的边框
+    with st.container(border=True):
+        st.markdown("""
+        | 参数维度 | 设定值 |
+        | :--- | :--- |
+        | **模型架构** | ConvAutoEncoder-BN |
+        | **损失函数** | MSE + SSIM (复合) |
+        | **输入分辨率**| 256x256 RGB |
+        | **存储引擎** | SQLite3 (本地) |
+        | **运行状态** | 🟢 跑步 (现场) |
+        """)

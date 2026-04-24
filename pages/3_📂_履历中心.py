@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 from core_utils import get_all_data, DB_NAME
+from style_utils import apply_glass_theme
+apply_glass_theme()
 
 st.title("📂 质检履历管理数据库")
 

@@ -6,6 +6,8 @@ import io
 import requests
 from PIL import Image
 from core_utils import log_to_db  # 前端仅保留轻量级的数据库履历写入功能
+from style_utils import apply_glass_theme
+apply_glass_theme()
 
 # ==========================================
 # 0. 企业级安全沙箱 (RBAC 登录拦截)

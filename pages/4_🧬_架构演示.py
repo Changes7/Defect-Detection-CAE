@@ -6,6 +6,8 @@ from PIL import Image
 import numpy as np
 import cv2
 from core_utils import load_model, DEVICE
+from style_utils import apply_glass_theme
+apply_glass_theme()
 
 st.title("🧬 核心算法原理与深度解析")
 

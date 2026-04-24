@@ -3,6 +3,8 @@ import datetime
 import time
 import sqlite3
 import hashlib
+from style_utils import apply_glass_theme
+apply_glass_theme()
 
 # ==========================================
 # 0. 全局页面配置 (必须是第一行)

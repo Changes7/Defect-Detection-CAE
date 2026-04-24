@@ -3,6 +3,8 @@ import time
 import os
 import shutil
 import datetime
+from style_utils import apply_glass_theme
+apply_glass_theme()
 
 # 第一重锁：必须登录
 if 'logged_in' not in st.session_state or not st.session_state.logged_in:
